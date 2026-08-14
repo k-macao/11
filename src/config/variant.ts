@@ -20,6 +20,19 @@ const buildVariant = (() => {
   }
 })();
 
+/**
+ * Self-hosted/default builds in this fork intentionally expose only the finance
+ * dashboard. Dedicated upstream variant builds can opt out by leaving this
+ * flag unset (for example, build:tech remains available for maintainers).
+ */
+export const FINANCE_ONLY = (() => {
+  try {
+    return import.meta.env.VITE_FINANCE_ONLY === '1';
+  } catch {
+    return false;
+  }
+})();
+
 function loadStoredVariant(): string | null {
   try {
     return localStorage.getItem('worldmonitor-variant');
@@ -29,6 +42,7 @@ function loadStoredVariant(): string | null {
 }
 
 export const SITE_VARIANT: string = (() => {
+  if (FINANCE_ONLY) return 'finance';
   if (typeof window === 'undefined') return buildVariant;
 
   const isTauri = '__TAURI_INTERNALS__' in window || '__TAURI__' in window;

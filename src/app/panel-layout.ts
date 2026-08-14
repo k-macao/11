@@ -36,6 +36,7 @@ import {
   enforceFreePanelLimit,
 } from '@/config';
 import { BETA_MODE } from '@/config/beta';
+import { FINANCE_ONLY } from '@/config/variant';
 import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
 import { trackCriticalBannerAction, trackCheckoutSuccess, trackCheckoutFailed, trackGateHit, replayPendingCheckoutSuccess, replayPendingProFunnelEvents, replayPendingConversionEvents } from '@/services/analytics';
@@ -896,7 +897,11 @@ export class PanelLayoutManager implements AppModule {
       <div id="proBannerSlot" class="pro-banner-slot" aria-live="polite"></div>
       <div class="header">
         <div class="header-left">
-          <div class="variant-switcher">${(() => {
+          <div class="variant-switcher">${FINANCE_ONLY ? `
+            <span class="variant-option active" data-variant="finance" title="${t('header.finance')} ${t('common.currentVariant')}">
+              <span class="variant-icon">📈</span>
+              <span class="variant-label">${t('header.finance')}</span>
+            </span>` : (() => {
         const local = this.ctx.isDesktopApp || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const inIframe = window.self !== window.top;
         const vHref = (v: keyof typeof VARIANT_SWITCHER_DASHBOARD_URLS) =>
@@ -1015,14 +1020,16 @@ export class PanelLayoutManager implements AppModule {
         </div>
         <div class="mobile-menu-divider"></div>
         ${(() => {
-        const variants = [
-          { key: 'full', icon: '🌍', label: t('header.world') },
-          { key: 'tech', icon: '💻', label: t('header.tech') },
-          { key: 'finance', icon: '📈', label: t('header.finance') },
-          { key: 'commodity', icon: '⛏️', label: t('header.commodity') },
-          { key: 'energy', icon: '⚡', label: t('header.energy') },
-          { key: 'happy', icon: '☀️', label: 'Good News' },
-        ];
+        const variants = FINANCE_ONLY
+          ? [{ key: 'finance', icon: '📈', label: t('header.finance') }]
+          : [
+              { key: 'full', icon: '🌍', label: t('header.world') },
+              { key: 'tech', icon: '💻', label: t('header.tech') },
+              { key: 'finance', icon: '📈', label: t('header.finance') },
+              { key: 'commodity', icon: '⛏️', label: t('header.commodity') },
+              { key: 'energy', icon: '⚡', label: t('header.energy') },
+              { key: 'happy', icon: '☀️', label: 'Good News' },
+            ];
         return variants.map(v =>
           `<button class="mobile-menu-item mobile-menu-variant ${v.key === SITE_VARIANT ? 'active' : ''}" data-variant="${v.key}">
             <span class="mobile-menu-item-icon">${v.icon}</span>
