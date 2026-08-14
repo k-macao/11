@@ -56,6 +56,7 @@ export const EXCLUDED_DESKTOP_BUILD_ENV = {
   VITE_RELAY_GATES_READY: 'feature flag with correct default',
   VITE_QUIET_HOURS_BATCH_ENABLED: 'feature flag with correct default',
   VITE_DIGEST_CRON_ENABLED: 'feature flag with correct default',
+  VITE_FINANCE_ONLY: 'web deployment scope flag; desktop variants are selected explicitly with VITE_VARIANT',
   VITE_FOLLOW_COUNTRIES_ENABLED: 'feature flag with correct default',
   VITE_MAP_INTERACTION_MODE: 'optional override; default is correct',
   VITE_HORMUZ_CRISIS_START_DATE: 'editorial re-pin override; default pinned in code',

@@ -46,7 +46,7 @@ World Monitor is a real-time global intelligence dashboard built as a TypeScript
         │ CoinGeck│ │  FRED   │ │ FIRMS   │
         │   ...   │ │   ...   │ │   ...   │
         └─────────┘ └─────────┘ └─────────┘
-           531+ observed upstream hosts
+           532+ observed upstream hosts
 ```
 
 **Source files**: `package.json`, `vercel.json`
@@ -368,6 +368,7 @@ Runs before every `git push`:
 | `feed-validation.yml` | PR (feed changes), daily cron | RSS feed reachability and validation |
 | `mcp-live-smoke.yml` | 6-hourly cron, push to main (smoke paths), manual | Anonymous strict-client walk of the production MCP surface on apex + www (capability walk, auth wall, OAuth endpoint routing — #4937/#4938 regression net) |
 | `live-api-cache-auth.yml` | 6-hourly cron, push to main (sweep paths), manual | Production cache/auth posture sweep: fake auth stays no-store and is never a cached 200, anonymous public surfaces stay cacheable, MCP/OAuth surfaces stay protocol-valid (#4497 regression net; suite was inert until #5379 wired the gate on, and the step fails if it executes 0 assertions) |
+| `m.yml` | Manual dispatch only | Builds the current finance market issue and sends its portrait HTML edition through PushPlus to WeChat |
 | `china-decision-parity-live.yml` | 6-hourly cron, push to main (audit paths), manual (optional staging URL) | Live half of the China decision-signal parity audit: probes the deployed composition RPC and the public `chinaDecisionSignals` bootstrap projection for the six-domain contract and a canonical snapshot under one hour old (#5643 — the probe existed but nothing invoked it, and `--require-live` keeps a lost `--url` from passing vacuously) |
 | `security-audit.yml` | PR, push to main, daily cron, manual | Production dependency audits for every tracked `package-lock.json` workspace, failing on unbaselined high/critical advisories |
 | `seed-freshness-monitor.yml` | 15-minute cron, manual | Enforces production ingestion acceptance after a green scheduled main gate; fails on every actionable compact-health problem except explicitly on-demand sources without grading production before Railway deploys or runs |
