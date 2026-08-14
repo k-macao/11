@@ -92,7 +92,7 @@ npm run dev
 
 ### 手动推送金融速报到 PushPlus 微信
 
-1. 将仓库根目录的 `manual-finance-pushplus.yml.example` 复制为 `.github/workflows/manual-finance-pushplus.yml`。
+1. 工作流已内置于 `.github/workflows/m.yml`，无需额外复制文件。
 2. 在仓库 **Settings → Secrets and variables → Actions** 中添加 `PUSHPLUS_TOKEN`（从 PushPlus 获取）；群组推送可再添加可选的 `PUSHPLUS_TOPIC`。
 3. 打开 **Actions → 手动推送金融速报到微信 → Run workflow**。
 4. 工作流会获取全球主要指数、汇率、黄金、原油、加密货币和中文金融要闻，将 Markdown 报告写入运行摘要并推送到微信。该工作流只有手动触发入口，不会定时运行。
