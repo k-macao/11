@@ -1,0 +1,53 @@
+name: 手动推送金融速报到微信
+
+on:
+  workflow_dispatch:
+    inputs:
+      headline_count:
+        description: 金融要闻条数（1-15）
+        required: false
+        default: '8'
+        type: string
+      quote_count:
+        description: 行情指标数量（1-12）
+        required: false
+        default: '12'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-finance-pushplus
+  cancel-in-progress: false
+
+jobs:
+  push-finance-brief:
+    name: 生成并推送金融速报
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 检查 PushPlus 配置
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: |
+          if [ -z "$PUSHPLUS_TOKEN" ]; then
+            echo "::error::请先在 Settings → Secrets and variables → Actions 中添加 PUSHPLUS_TOKEN"
+            exit 1
+          fi
+
+      - name: 获取金融数据并推送到 PushPlus
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          PUSHPLUS_TOPIC: ${{ secrets.PUSHPLUS_TOPIC }}
+          FINANCE_HEADLINE_COUNT: ${{ inputs.headline_count }}
+          FINANCE_QUOTE_COUNT: ${{ inputs.quote_count }}
+        run: node scripts/push-finance-brief.mjs
