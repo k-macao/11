@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>金融速报推送 · Manual Dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+<style>
+:root{
+  /* 主题色 · 🔵 克莱因蓝 IKB */
+  --paper:#fafaf8;
+  --paper-rgb:250,250,248;
+  --ink:#0a0a0a;
+  --ink-rgb:10,10,10;
+  --grey-1:#f0f0ee;
+  --grey-2:#d4d4d2;
+  --grey-3:#737373;
+  --accent:#002FA7;
+  --accent-rgb:0,47,167;
+  --accent-on:#ffffff;
+
+  --border-subtle:#e0e0e0;
+  --text-primary:var(--ink);
+  --text-secondary:#3d3d3d;
+  --text-helper:var(--grey-3);
+
+  --sans:'Inter','Noto Sans SC','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --sp-3:8px;--sp-4:12px;--sp-5:16px;--sp-6:24px;--sp-7:32px;
+  --sp-8:40px;--sp-9:48px;--sp-10:64px;--sp-11:80px;--sp-12:96px;
+  --nav-safe-bottom:8vh;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--paper);color:var(--text-primary);
+  font-family:var(--sans);font-weight:300;
+  -webkit-font-smoothing:antialiased;
+}
+.deck{position:relative;width:100vw;height:100vh}
+.slide{
+  position:absolute;inset:0;
+  opacity:0;visibility:hidden;
+  transition:opacity .42s cubic-bezier(0,0,.3,1);
+}
+.slide.active{opacity:1;visibility:visible}
+.slide.dark{background:var(--ink);color:var(--paper)}
+.slide.dark .t-meta,.slide.dark .t-cat{color:rgba(var(--paper-rgb),.62)}
+.slide.dark .hr-hairline{background:rgba(var(--paper-rgb),.22)}
+
+.canvas-card{
+  width:100vw;height:100vh;
+  padding:5.6vh 5vw 4.4vh;
+  display:flex;flex-direction:column;
+}
+.slide.split .canvas-card{padding:0;flex-direction:row}
+
+/* chrome */
+.chrome-min{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:var(--sp-9);flex:none;
+}
+.t-meta{
+  font-family:var(--mono);font-size:14px;font-weight:500;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-helper);
+  font-feature-settings:"tnum","ss01";
+}
+.t-cat{
+  font-family:var(--mono);font-size:14px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+}
+.slide.dark .t-cat{color:var(--paper)}
+
+/* typography */
+.h-hero{font-size:min(11.6vw,19vh);font-weight:200;letter-spacing:-.045em;line-height:.88}
+.h-xl{font-size:min(7vw,12vh);font-weight:200;letter-spacing:-.04em;line-height:.92}
+.h-xl-zh{font-size:min(5.8vw,10.2vh);font-weight:200;letter-spacing:-.03em;line-height:1.02}
+.h-lg-zh{font-size:min(5.2vw,9.2vh);font-weight:200;letter-spacing:-.03em;line-height:1.04}
+.h-statement{font-size:min(8.4vw,14vh);font-weight:200;letter-spacing:-.04em;line-height:.94}
+.h-mid{font-size:min(1.9vw,3.4vh);font-weight:400;letter-spacing:-.01em;line-height:1.3}
+.p-body{font-size:max(18px,1.12vw);font-weight:400;line-height:1.62;color:var(--text-secondary)}
+.p-desc{font-size:max(16px,.95vw);font-weight:400;line-height:1.6;color:var(--text-secondary)}
+.slide.dark .p-body,.slide.dark .p-desc{color:rgba(var(--paper-rgb),.78)}
+.num-xl{font-family:var(--mono);font-size:min(8.4vw,14vh);font-weight:200;letter-spacing:-.05em;line-height:.9;font-feature-settings:"tnum","ss01"}
+.num-md{font-family:var(--mono);font-size:min(4.6vw,8.5vh);font-weight:300;letter-spacing:-.04em;line-height:.92;font-feature-settings:"tnum","ss01"}
+.mono-lbl{font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-helper)}
+.accent{color:var(--accent)}
+em.it{font-style:italic;font-weight:300}
+
+.hr-hairline{height:1px;background:var(--border-subtle);border:0;width:100%}
+.rule-accent{height:2px;background:var(--accent);width:100%}
+
+/* cards */
+.card-fill{background:var(--grey-1);padding:var(--sp-7)}
+.card-ink{background:var(--ink);color:var(--paper);padding:var(--sp-7)}
+.card-accent{background:var(--accent);color:var(--accent-on);padding:var(--sp-7)}
+.card-outlined{border:1px solid var(--border-subtle);padding:var(--sp-7)}
+.slide.dark .card-fill{background:rgba(var(--paper-rgb),.07)}
+.slide.dark .card-outlined{border-color:rgba(var(--paper-rgb),.24)}
+
+.sq{width:10px;height:10px;background:var(--accent);flex:none}
+
+/* body region */
+.body-grid{flex:1;padding:0;display:grid;min-height:0}
+.head-stack{display:flex;flex-direction:column;gap:1.4vh}
+
+/* S01 cover rows */
+.cover-row{
+  display:grid;grid-template-columns:auto 1fr;gap:3vw;align-items:end;
+  padding:2.6vh 0;border-bottom:1px solid var(--border-subtle);
+}
+.cover-row:first-child{border-top:1px solid var(--border-subtle)}
+.cover-row .idx{font-family:var(--mono);font-size:min(3.4vw,6vh);font-weight:200;color:var(--accent);line-height:1;font-feature-settings:"tnum"}
+.cover-row .ttl{font-size:min(3.2vw,5.6vh);font-weight:200;letter-spacing:-.03em;line-height:1.05;text-align:right}
+
+/* S02 timeline vertical */
+.timeline-v{display:flex;flex-direction:column;gap:0}
+.tl-item{display:grid;grid-template-columns:64px 1fr;gap:var(--sp-6);padding:1.8vh 0;border-bottom:1px solid var(--border-subtle);align-items:start}
+.tl-item .tl-n{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--accent);padding-top:4px}
+.kpi-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-6);border-top:2px solid var(--ink);padding-top:2.4vh}
+
+/* S03/S10 split */
+.half{width:50vw;height:100vh;padding:5.6vh 3.6vw 4.4vh;display:flex;flex-direction:column;justify-content:space-between}
+.half.grey{background:var(--grey-1)}
+.half.ink{background:var(--ink);color:var(--paper)}
+
+/* S04 six cells */
+.sub-grid-3-2{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:var(--sp-5)}
+.cell{border:1px solid var(--border-subtle);padding:var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-4);min-height:0}
+.cell .cn{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--accent)}
+.cell .ct{font-size:max(17px,1.05vw);font-weight:500;letter-spacing:-.01em}
+
+/* S06 KPI tower */
+.kpi-tower{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6);align-items:end}
+.kpi-col{display:flex;flex-direction:column;gap:var(--sp-4);border-top:2px solid var(--ink);padding-top:var(--sp-5)}
+
+/* S08 duo compare */
+.duo-compare{display:grid;grid-template-columns:1fr 1px 1fr;gap:var(--sp-9);min-height:0}
+.duo-mid{background:var(--border-subtle)}
+.duo-col{display:flex;flex-direction:column;gap:var(--sp-5);min-height:0}
+.duo-line{display:grid;grid-template-columns:20px 1fr;gap:var(--sp-4);align-items:start}
+
+/* S11 horizontal timeline */
+.timeline-h{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-6);border-top:2px solid var(--ink);padding-top:var(--sp-6)}
+.th-node{display:flex;flex-direction:column;gap:var(--sp-4)}
+
+/* S19 four cards */
+.four-col{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-6)}
+.fc{display:flex;flex-direction:column;gap:var(--sp-4);border-top:2px solid var(--accent);padding-top:var(--sp-5)}
+
+/* S20 ledger */
+.ledger{display:flex;flex-direction:column}
+.ledger-row{display:grid;grid-template-columns:1fr auto;gap:var(--sp-8);align-items:baseline;padding:2vh 0;border-bottom:1px solid var(--border-subtle)}
+.slide.dark .ledger-row{border-bottom-color:rgba(var(--paper-rgb),.2)}
+
+/* code block */
+.code{
+  font-family:var(--mono);font-size:max(15px,.92vw);font-weight:400;
+  background:var(--grey-1);padding:var(--sp-6);line-height:1.75;
+  white-space:pre;overflow-x:auto;border-left:2px solid var(--accent);
+}
+.slide.dark .code{background:rgba(var(--paper-rgb),.07)}
+
+/* dot matrix deco */
+.dot-mat{
+  background-image:radial-gradient(var(--grey-2) 1px,transparent 1px);
+  background-size:12px 12px;
+}
+
+/* footnote */
+.footnote{
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:14px;font-weight:500;
+  color:var(--text-helper);letter-spacing:.05em;flex:none;
+}
+.slide.dark .footnote{color:rgba(var(--paper-rgb),.5)}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:2vh;display:flex;justify-content:center;gap:8px;z-index:40}
+.nav i{width:22px;height:2px;background:var(--grey-2);cursor:pointer;transition:background .2s}
+.nav i.on{background:var(--accent)}
+.slide.dark ~ .nav i{background:rgba(255,255,255,.3)}
+.hint{
+  position:fixed;right:5vw;bottom:2vh;z-index:40;
+  font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.06em;
+  color:var(--text-helper);text-transform:uppercase;
+}
+.pow{
+  position:fixed;left:5vw;bottom:2vh;z-index:40;
+  font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.06em;
+  color:var(--text-helper);text-transform:uppercase;
+  background:none;border:1px solid var(--border-subtle);padding:4px 10px;cursor:pointer;
+}
+.nav-safe-bottom{padding-bottom:var(--nav-safe-bottom)}
+
+[data-anim]{opacity:0}
+.slide.active [data-anim]{animation:rise .56s cubic-bezier(0,0,.3,1) forwards}
+.slide.active [data-anim="head"]{animation-delay:.04s}
+.slide.active [data-anim="body"]{animation-delay:.14s}
+.slide.active [data-anim="foot"]{animation-delay:.24s}
+body.low-power [data-anim]{animation:none!important;opacity:1!important}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){[data-anim]{animation:none!important;opacity:1!important}}
+
+.ico-md{width:22px;height:22px;stroke-width:1.5}
+.ico-sm{width:16px;height:16px;stroke-width:1.75}
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ════ S01 · Index Cover ════ -->
+<section class="slide" data-layout="S01" data-theme="light">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">World Monitor · Finance</span>
+      <span class="t-meta">01 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr auto;gap:3vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">Manual Dispatch · PushPlus · WeChat</div>
+        <h1 class="h-xl-zh">金融速报<br>手动推送</h1>
+      </div>
+      <div data-anim="body" style="display:flex;flex-direction:column;justify-content:end">
+        <div class="cover-row">
+          <span class="idx">01</span>
+          <span class="ttl">一次点击，一份速报</span>
+        </div>
+        <div class="cover-row">
+          <span class="idx">02</span>
+          <span class="ttl">12 项行情 · 8 条要闻</span>
+        </div>
+        <div class="cover-row">
+          <span class="idx">03</span>
+          <span class="ttl">只手动，不定时</span>
+        </div>
+      </div>
+      <div class="footnote nav-safe-bottom" data-anim="foot">
+        <span>.github/workflows/m.yml</span>
+        <span>2026</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S03 · Split Statement ════ -->
+<section class="slide split" data-layout="S03" data-theme="light">
+  <div class="canvas-card">
+    <div class="half">
+      <div class="t-cat">Statement · 02</div>
+      <h2 class="h-statement" data-anim="head">不定时<br><span class="accent">只手动</span></h2>
+      <div class="t-meta">workflow_dispatch only</div>
+    </div>
+    <div class="half grey">
+      <div class="t-meta">Why</div>
+      <div data-anim="body" style="display:flex;flex-direction:column;gap:3vh">
+        <p class="p-body">这条工作流<em class="it">没有</em> <code style="font-family:var(--mono)">schedule</code> 触发器。它不会在凌晨自己醒来，不会在你休假时刷屏，也不会因为某个源挂掉而反复报警。</p>
+        <hr class="hr-hairline">
+        <p class="p-body">推送的时机由人决定 —— 开盘前、收盘后、突发行情时。<strong style="font-weight:600">Actions → Run workflow</strong>，仅此一个入口。</p>
+      </div>
+      <div class="footnote"><span>No cron</span><span>02 / 08</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S11 · Horizontal Timeline ════ -->
+<section class="slide" data-layout="S11" data-theme="light">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">Pipeline · 03</span>
+      <span class="t-meta">03 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr;gap:4vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">Run Workflow · 15 seconds end to end</div>
+        <h2 class="h-lg-zh">四步，十五秒</h2>
+      </div>
+      <div data-anim="body" style="display:flex;flex-direction:column;justify-content:center">
+        <div class="timeline-h">
+          <div class="th-node">
+            <span class="num-md accent">01</span>
+            <div class="mono-lbl">Checkout</div>
+            <p class="p-desc">拉取仓库代码，配置 Node.js 22 运行时。</p>
+          </div>
+          <div class="th-node">
+            <span class="num-md accent">02</span>
+            <div class="mono-lbl">Guard</div>
+            <p class="p-desc">校验 PUSHPLUS_TOKEN，缺失即以 error 注解中断。</p>
+          </div>
+          <div class="th-node">
+            <span class="num-md accent">03</span>
+            <div class="mono-lbl">Fetch</div>
+            <p class="p-desc">并行抓取行情与中文财经要闻，任一失败自动降级。</p>
+          </div>
+          <div class="th-node">
+            <span class="num-md accent">04</span>
+            <div class="mono-lbl">Deliver</div>
+            <p class="p-desc">Markdown 报告写入运行摘要，同时推送到微信。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S04 · Six Cells ════ -->
+<section class="slide dark" data-layout="S04" data-theme="dark">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">Coverage · 04</span>
+      <span class="t-meta">04 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr;gap:4vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">12 Instruments · Yahoo Finance Chart API</div>
+        <h2 class="h-lg-zh">一屏看完全球</h2>
+      </div>
+      <div class="sub-grid-3-2" data-anim="body">
+        <div class="cell">
+          <span class="cn">01 · INDEX</span>
+          <span class="ct">美股三大指数</span>
+          <p class="p-desc">标普 500 · 纳斯达克 · 道琼斯</p>
+        </div>
+        <div class="cell">
+          <span class="cn">02 · INDEX</span>
+          <span class="ct">亚太主板</span>
+          <p class="p-desc">恒生指数 · 上证指数 · 日经 225</p>
+        </div>
+        <div class="cell">
+          <span class="cn">03 · FX</span>
+          <span class="ct">汇率</span>
+          <p class="p-desc">欧元/美元 · 美元/人民币</p>
+        </div>
+        <div class="cell">
+          <span class="cn">04 · METAL</span>
+          <span class="ct">贵金属</span>
+          <p class="p-desc">黄金期货 GC=F</p>
+        </div>
+        <div class="cell">
+          <span class="cn">05 · ENERGY</span>
+          <span class="ct">能源</span>
+          <p class="p-desc">WTI 原油 CL=F</p>
+        </div>
+        <div class="cell">
+          <span class="cn">06 · CRYPTO</span>
+          <span class="ct">加密资产</span>
+          <p class="p-desc">比特币 · 以太坊</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S08 · Duo Compare ════ -->
+<section class="slide" data-layout="S08" data-theme="light">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">Config · 05</span>
+      <span class="t-meta">05 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr;gap:4vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">Secrets vs Inputs</div>
+        <h2 class="h-lg-zh">配一次，跑很多次</h2>
+      </div>
+      <div class="duo-compare" data-anim="body">
+        <div class="duo-col">
+          <div class="mono-lbl" style="color:var(--accent)">A · Repository Secrets</div>
+          <hr class="rule-accent">
+          <div class="duo-line"><span class="sq"></span><div><div class="h-mid">PUSHPLUS_TOKEN</div><p class="p-desc">必填。PushPlus 官网获取，填入 Settings → Secrets and variables → Actions。</p></div></div>
+          <div class="duo-line"><span class="sq" style="background:var(--grey-2)"></span><div><div class="h-mid">PUSHPLUS_TOPIC</div><p class="p-desc">选填。填写群组编码即群发；留空则只推给自己。</p></div></div>
+          <div style="margin-top:auto"><p class="p-desc" style="color:var(--text-helper)">缺少 token 时工作流第 3 步直接失败，不会发出空推送。</p></div>
+        </div>
+        <div class="duo-mid"></div>
+        <div class="duo-col">
+          <div class="mono-lbl">B · Dispatch Inputs</div>
+          <hr class="hr-hairline" style="height:2px;background:var(--ink)">
+          <div class="duo-line"><span class="sq" style="background:var(--ink)"></span><div><div class="h-mid">headline_count</div><p class="p-desc">金融要闻条数。默认 8，上限 15，超出自动收敛。</p></div></div>
+          <div class="duo-line"><span class="sq" style="background:var(--ink)"></span><div><div class="h-mid">quote_count</div><p class="p-desc">行情指标数量。默认 12，即全量符号表。</p></div></div>
+          <div style="margin-top:auto"><p class="p-desc" style="color:var(--text-helper)">两个入参都是可选的，直接点 Run workflow 即走默认值。</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S19 · Four Cards ════ -->
+<section class="slide" data-layout="S19" data-theme="light">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">Resilience · 06</span>
+      <span class="t-meta">06 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr auto;gap:4vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">Failure Modes · Designed Degradation</div>
+        <h2 class="h-lg-zh">坏掉的时候怎么办</h2>
+      </div>
+      <div class="four-col" data-anim="body" style="align-content:start">
+        <div class="fc">
+          <span class="mono-lbl">Case 01</span>
+          <div class="h-mid">行情源超时</div>
+          <p class="p-desc">单个符号 12 秒超时后被 Promise.allSettled 丢弃，其余指标照常成表。</p>
+        </div>
+        <div class="fc">
+          <span class="mono-lbl">Case 02</span>
+          <div class="h-mid">新闻源不可用</div>
+          <p class="p-desc">要闻区落为提示文案，行情表仍然推送，不阻断整次投递。</p>
+        </div>
+        <div class="fc">
+          <span class="mono-lbl">Case 03</span>
+          <div class="h-mid">两源同时失效</div>
+          <p class="p-desc">抛错终止，明确拒绝发送空白报告 —— 宁可不发，不发噪音。</p>
+        </div>
+        <div class="fc">
+          <span class="mono-lbl">Case 04</span>
+          <div class="h-mid">重复触发</div>
+          <p class="p-desc">并发组 manual-finance-pushplus 串行排队，cancel-in-progress 为 false。</p>
+        </div>
+      </div>
+      <div class="footnote nav-safe-bottom" data-anim="foot">
+        <span>scripts/push-finance-brief.mjs</span>
+        <span>timeout-minutes: 5</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S20 · Stacked KPI Ledger ════ -->
+<section class="slide dark" data-layout="S20" data-theme="dark">
+  <div class="canvas-card">
+    <div class="chrome-min">
+      <span class="t-cat">Ledger · 07</span>
+      <span class="t-meta">07 / 08</span>
+    </div>
+    <div class="body-grid" style="grid-template-rows:auto 1fr;gap:3vh">
+      <div class="head-stack" data-anim="head">
+        <div class="t-meta">Run Record · Last Two Dispatches</div>
+        <h2 class="h-lg-zh">跑过，而且是绿的</h2>
+      </div>
+      <div class="ledger" data-anim="body" style="justify-content:center">
+        <div class="ledger-row">
+          <div><div class="mono-lbl">Successful runs</div><p class="p-desc">连续两次手动触发全部 success</p></div>
+          <span class="num-xl">2</span>
+        </div>
+        <div class="ledger-row">
+          <div><div class="mono-lbl">Median duration</div><p class="p-desc">从 checkout 到微信送达</p></div>
+          <span class="num-xl">15<span style="font-size:.36em;font-weight:400;letter-spacing:0"> s</span></span>
+        </div>
+        <div class="ledger-row">
+          <div><div class="mono-lbl">Unit tests</div><p class="p-desc">parseRssItems · quoteFromChart · buildFinanceReport</p></div>
+          <span class="num-xl">3<span style="font-size:.36em;font-weight:400;letter-spacing:0"> / 3</span></span>
+        </div>
+        <div class="ledger-row" style="border-bottom:0">
+          <div><div class="mono-lbl">Scheduled triggers</div><p class="p-desc">没有 cron，永远等你点</p></div>
+          <span class="num-xl">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ S10 · Split Closing ════ -->
+<section class="slide split" data-layout="S10" data-theme="light">
+  <div class="canvas-card">
+    <div class="half ink">
+      <div class="t-cat">Closing · 08</div>
+      <h2 class="h-statement" data-anim="head">现在<br>去点它</h2>
+      <div class="t-meta">Actions · Run workflow</div>
+    </div>
+    <div class="half">
+      <div class="t-meta">Three Steps</div>
+      <div data-anim="body" style="display:flex;flex-direction:column;gap:2.6vh">
+        <div class="duo-line"><span class="sq"></span><div><div class="h-mid">打开 Actions 面板</div><p class="p-desc">在仓库顶栏选择「手动推送金融速报到微信」。</p></div></div>
+        <div class="duo-line"><span class="sq"></span><div><div class="h-mid">点击 Run workflow</div><p class="p-desc">两个入参留空即用默认值 8 条要闻 / 12 项行情。</p></div></div>
+        <div class="duo-line"><span class="sq"></span><div><div class="h-mid">本地先预览</div><p class="p-desc">不发送、只打印，可先在本机确认排版。</p></div></div>
+        <div class="code">npm run finance:push -- --dry-run</div>
+      </div>
+      <div class="footnote"><span>数据仅供参考，不构成投资建议</span><span>08 / 08</span></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="nav" id="nav"></div>
+<div class="hint">← → / Scroll / ESC</div>
+<button class="pow" id="pow">B 静态</button>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var nav=document.getElementById('nav');
+  var cur=0,lock=false;
+
+  slides.forEach(function(_,i){
+    var d=document.createElement('i');
+    d.addEventListener('click',function(){go(i)});
+    nav.appendChild(d);
+  });
+  var dots=[].slice.call(nav.children);
+
+  function paint(){
+    slides.forEach(function(s,i){s.classList.toggle('active',i===cur)});
+    dots.forEach(function(d,i){d.classList.toggle('on',i===cur)});
+    var dark=slides[cur].classList.contains('dark');
+    document.body.style.background=dark?'#0a0a0a':'var(--paper)';
+    dots.forEach(function(d){ if(!d.classList.contains('on')) d.style.background=dark?'rgba(255,255,255,.3)':''; else d.style.background=''; });
+    if(window.lucide) window.lucide.createIcons();
+  }
+  function go(i){
+    if(lock) return;
+    var n=Math.max(0,Math.min(slides.length-1,i));
+    if(n===cur) return;
+    lock=true;cur=n;paint();
+    setTimeout(function(){lock=false},420);
+  }
+  window.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(cur+1)}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1)}
+    if(e.key==='Home')go(0);
+    if(e.key==='End')go(slides.length-1);
+    if(e.key==='b'||e.key==='B')togglePower();
+  });
+  var acc=0,t=null;
+  window.addEventListener('wheel',function(e){
+    acc+=e.deltaY;clearTimeout(t);
+    if(Math.abs(acc)>60){go(cur+(acc>0?1:-1));acc=0}
+    t=setTimeout(function(){acc=0},180);
+  },{passive:true});
+  var sx=null;
+  window.addEventListener('touchstart',function(e){sx=e.touches[0].clientX},{passive:true});
+  window.addEventListener('touchend',function(e){
+    if(sx===null)return;
+    var dx=e.changedTouches[0].clientX-sx;
+    if(Math.abs(dx)>52)go(cur+(dx<0?1:-1));
+    sx=null;
+  },{passive:true});
+
+  function togglePower(){
+    var on=document.body.classList.toggle('low-power');
+    try{localStorage.setItem('wm-low-power',on?'1':'0')}catch(_){}
+    document.getElementById('pow').textContent=on?'B 动效':'B 静态';
+  }
+  document.getElementById('pow').addEventListener('click',togglePower);
+  try{if(localStorage.getItem('wm-low-power')==='1')togglePower()}catch(_){}
+
+  paint();
+})();
+</script>
+</body>
+</html>
