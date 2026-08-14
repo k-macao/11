@@ -95,12 +95,20 @@ npm run dev
 1. 将仓库根目录的 `manual-finance-pushplus.yml.example` 复制为 `.github/workflows/manual-finance-pushplus.yml`。
 2. 在仓库 **Settings → Secrets and variables → Actions** 中添加 `PUSHPLUS_TOKEN`（从 PushPlus 获取）；群组推送可再添加可选的 `PUSHPLUS_TOPIC`。
 3. 打开 **Actions → 手动推送金融速报到微信 → Run workflow**。
-4. 工作流会获取全球主要指数、汇率、黄金、原油、加密货币和中文金融要闻，将 Markdown 报告写入运行摘要并推送到微信。该工作流只有手动触发入口，不会定时运行。
+4. 工作流会获取全球主要指数、汇率、黄金、原油、加密货币和中文金融要闻：Actions 运行摘要保留紧凑的 Markdown 数据表，微信端则使用 **HTML 竖版国际杂志风**推送。该工作流只有手动触发入口，不会定时运行。
 
-本地只预览、不推送：
+推送视觉参考 [Guizang Social Card Skill](https://github.com/op7418/guizang-social-card-skill) 的 Editorial Magazine × E-ink 体系，采用 3:4 竖版封面、衬线大标题、等宽元数据、纸张/墨色底、细分隔线、市场 ledger 与单一靛蓝强调色；去掉 emoji、大圆角、阴影和通用卡片堆叠。
+
+本地只预览、不推送（会在仓库根目录生成已忽略的 `finance-push-preview.html`）：
 
 ```bash
 npm run finance:push -- --dry-run
+```
+
+也可指定预览文件：
+
+```bash
+npm run finance:push -- --dry-run --output=/tmp/finance-push.html
 ```
 
 针对特定变体进行开发（保留供上游兼容）：
