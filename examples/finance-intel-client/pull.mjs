@@ -15,6 +15,9 @@
 import { writeFile } from 'node:fs/promises';
 import process from 'node:process';
 import { WorldMonitorClient } from './client.mjs';
+import { checkFreshness } from './freshness.mjs';
+import { fetchDigest, VARIANT_CATEGORIES } from './news.mjs';
+import { CATALOG, fetchRadar } from './radar.mjs';
 import { GROUPS, selectSources, SOURCES } from './sources.mjs';
 
 function parseArgs(argv) {
@@ -62,6 +65,33 @@ function printList() {
     console.log('');
   }
   console.log(`合计 ${SOURCES.length} 个数据源。用 --group / --only 挑选。\n`);
+
+  console.log('── 金融雷达 (--radar) 静态目录，来自仓库配置');
+  const byTier = CATALOG.exchanges.reduce((a, e) => {
+    a[e.tier] = (a[e.tier] ?? 0) + 1;
+    return a;
+  }, {});
+  console.log(
+    `   交易所 ${CATALOG.exchanges.length} 家 (超大型 ${byTier.mega} / 主要 ${byTier.major} / 新兴 ${byTier.emerging})，其中 ${CATALOG.exchangeIndexSymbols.length} 家有可拉取的基准指数`,
+  );
+  if (CATALOG.exchangesWithoutIndex.length) {
+    console.log(`   无公开基准指数（仅静态元数据）: ${CATALOG.exchangesWithoutIndex.join(', ')}`);
+  }
+  console.log(
+    `   金融中心 ${CATALOG.financialCenters.length} · 央行 ${CATALOG.centralBanks.length} · 商品枢纽 ${CATALOG.commodityHubs.length}`,
+  );
+  console.log(
+    `   大宗商品/外汇 ${CATALOG.commoditySymbols.length} 符号 · 加密 ${CATALOG.cryptoIds.length} 资产 · 默认股票 ${CATALOG.stocks.defaultSymbols.length}/${CATALOG.stocks.catalogSize}\n`,
+  );
+
+  console.log('── 新闻摘要 (--news) 变体与类别');
+  for (const [variant, cats] of Object.entries(VARIANT_CATEGORIES)) {
+    const n = Object.values(cats).reduce((a, b) => a + b, 0);
+    console.log(`   --variant ${variant.padEnd(10)} ${Object.keys(cats).length} 类 / ${n} 源`);
+  }
+  console.log(
+    `   条目合计 ${CATALOG.newsFeedEntries}，去重后 ${CATALOG.newsFeedUniqueSources} 家独立信源\n`,
+  );
 }
 
 function summarize(snapshot) {
@@ -87,6 +117,122 @@ function summarize(snapshot) {
   return lines.join('\n');
 }
 
+const pct = (v) => (v == null ? '  --  ' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`.padStart(7));
+const price = (v) => (v == null ? '--' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }));
+
+function renderFreshness(f) {
+  const c = f.counts;
+  const badge = f.pass ? '✓ 通过' : '✗ 未通过';
+  const lines = [
+    `新鲜度 (阈值 ${f.maxAgeHours}h) ${badge} — 新鲜 ${c.fresh} · 过期 ${c.stale} · 无时间戳 ${c.unknown} · 失败 ${c.failed}`,
+  ];
+  for (const r of f.rows) {
+    if (r.state === 'fresh') continue; // 只显示需要注意的
+    const detail =
+      r.state === 'stale'
+        ? `已 ${r.ageHours}h`
+        : r.state === 'failed'
+          ? r.error
+          : '响应体无时间戳，仅能确认服务可达';
+    lines.push(`   · ${r.source}: ${r.state} (${detail})`);
+  }
+  return lines.join('\n');
+}
+
+function renderRadar(r) {
+  const L = ['', '═══ 金融雷达 ═══', ''];
+
+  const e = r.exchanges;
+  L.push(`交易所 ${e.total} 家 · 有行情 ${e.withQuote} · 当前开盘 ${e.open}`);
+  L.push('');
+  for (const tier of ['mega', 'major', 'emerging']) {
+    const rows = e.rows.filter((x) => x.tier === tier);
+    if (!rows.length) continue;
+    const label = { mega: '超大型 (>$5T)', major: '主要 ($1-5T)', emerging: '新兴/区域' }[tier];
+    L.push(`  ── ${label}`);
+    for (const x of rows) {
+      const open = x.marketOpen === null ? ' ? ' : x.marketOpen ? '●开' : '○闭';
+      const q =
+        x.quoteStatus === 'no-index'
+          ? '（无公开基准指数）'
+          : x.quoteStatus === 'missing'
+            ? '（未返回行情）'
+            : `${(x.indexSymbol ?? '').padEnd(12)} ${price(x.price).padStart(12)}  ${pct(x.changePercent)}`;
+      L.push(`     ${open} ${x.shortName.padEnd(10)} ${x.country}  ${q}`);
+    }
+    L.push('');
+  }
+
+  const c = r.commodities;
+  L.push(`大宗商品 / 外汇 ${c.quotes.length}/${c.expectedSymbols}`);
+  for (const q of c.quotes.slice(0, 12)) {
+    L.push(`     ${String(q.symbol).padEnd(12)} ${price(q.price).padStart(12)}  ${pct(q.changePercent)}`);
+  }
+  if (c.quotes.length > 12) L.push(`     … 其余 ${c.quotes.length - 12} 项见 JSON`);
+  L.push('');
+
+  const k = r.crypto;
+  L.push(`加密货币 ${k.quotes.length}/${k.expectedIds}`);
+  for (const q of k.quotes.slice(0, 12)) {
+    L.push(`     ${String(q.symbol).padEnd(12)} ${price(q.price).padStart(12)}  ${pct(q.changePercent)}`);
+  }
+  L.push('');
+
+  const m = r.macroSignals;
+  L.push(`7 信号综合指标 — 结论: ${m.verdict ?? '（未返回）'} · 已获取 ${m.presentCount}/7`);
+  for (const s of m.signals) {
+    const status = s.present ? (s.status ?? 'n/a') : '缺失';
+    L.push(`     ${s.label.padEnd(12)} ${String(status).padEnd(10)} ${s.detail}`);
+  }
+  L.push('');
+
+  if (r.errors.length) {
+    L.push('错误:');
+    for (const err of r.errors) L.push(`     ✗ ${err.source}: ${err.kind} ${String(err.message ?? '').slice(0, 80)}`);
+    L.push('');
+  }
+
+  L.push(renderFreshness(r.freshness));
+  L.push('');
+  return L.join('\n');
+}
+
+function renderNews(d) {
+  const L = ['', '═══ 新闻摘要 ═══', ''];
+  if (!d.ok) {
+    L.push(`✗ 拉取失败: ${d.error.kind} ${String(d.error.message ?? '').slice(0, 160)}`);
+    L.push('');
+    L.push(renderFreshness(d.freshness));
+    L.push('');
+    return L.join('\n');
+  }
+
+  L.push(`变体 ${d.variant} · 生成于 ${d.generatedAt ?? '未知'}`);
+  L.push(
+    `类别 ${d.returnedCategories}/${d.configuredCategories} · 条目 ${d.totalItems} · 告警 ${d.alerts}`,
+  );
+  if (d.degradedFeeds.length) {
+    L.push(`降级信源 ${d.degradedFeeds.length}: ${d.degradedFeeds.slice(0, 6).map((f) => `${f.feed}(${f.state})`).join(', ')}${d.degradedFeeds.length > 6 ? ' …' : ''}`);
+  }
+  L.push('');
+
+  for (const cat of d.categories) {
+    L.push(`  ── ${cat.label} (${cat.key}) · ${cat.count} 条`);
+    for (const it of cat.items.slice(0, 5)) {
+      const score = it.importanceScore != null ? `[${it.importanceScore}]` : '[--]';
+      const alert = it.isAlert ? ' 🔴' : '';
+      L.push(`     ${score}${alert} ${String(it.title ?? '').slice(0, 78)}`);
+      L.push(`            ${it.source ?? '?'} · ${it.publishedAt ?? '无时间'}`);
+    }
+    if (cat.count > 5) L.push(`     … 其余 ${cat.count - 5} 条见 JSON`);
+    L.push('');
+  }
+
+  L.push(renderFreshness(d.freshness));
+  L.push('');
+  return L.join('\n');
+}
+
 function shape(data) {
   if (Array.isArray(data)) return `array(${data.length})`;
   if (data && typeof data === 'object') {
@@ -107,7 +253,25 @@ async function main() {
         '',
         '用法: node pull.mjs [选项]',
         '',
+        '模式:',
+        '  --radar                金融雷达: 29 交易所 + 大宗商品 + 加密 + 7 信号',
+        '  --news                 新闻摘要: 500+ 源、多类别、AI 简报',
         '  --list                 列出全部数据源及说明',
+        '  (默认)                 按 --group / --only 逐源拉取',
+        '',
+        '金融雷达选项:',
+        '  --exchanges <A,B>      只要某几家交易所 (shortName，如 NYSE,HKEX)',
+        '',
+        '新闻选项:',
+        '  --variant <v>          full | finance | tech | commodity | happy (默认 finance)',
+        '  --lang <code>          ISO 639-1 语言码，如 zh / en',
+        '  --categories <a,b>     只要某几个类别',
+        '  --limit <n>            每类最多几条',
+        '  --min-importance <n>   重要性下限',
+        '  --alerts-only          只要 alert 条目',
+        '',
+        '通用选项:',
+        '  --max-age <hours>      新鲜度阈值，默认 24',
         '  --group <a,b>          按分组拉取: ' + Object.keys(GROUPS).join(' | '),
         '  --only <id,id>         按源 id 拉取',
         '  --param k=v            覆盖查询参数 (可重复)，如 --param country_code=SA',
@@ -131,16 +295,6 @@ async function main() {
     return 0;
   }
 
-  const includePremium = args.premium !== 'false' && args.noPremium !== 'true';
-  const only = args.only ? args.only.split(',').map((s) => s.trim()) : undefined;
-  const group = args.group && args.group !== 'true' ? args.group : undefined;
-
-  const chosen = selectSources({ group, only, includePremium });
-  if (!chosen.length) {
-    console.error('没有匹配的数据源。用 --list 查看可用 id / 分组。');
-    return 2;
-  }
-
   const key = args.key ?? process.env.WM_KEY ?? '';
   if (!key) {
     console.error(
@@ -161,6 +315,58 @@ async function main() {
     },
   });
 
+  const maxAgeHours = Number(args.maxAge ?? 24);
+  const emit = async (payload, text) => {
+    console.log(text);
+    if (args.pretty) console.log(JSON.stringify(payload, null, 2));
+    if (args.out && args.out !== 'true') {
+      await writeFile(args.out, JSON.stringify(payload, null, 2));
+      console.log(`已写出 ${args.out}`);
+    }
+  };
+
+  // ── 模式一：金融雷达 ──────────────────────────────────
+  if (args.radar) {
+    const radar = await fetchRadar(client, {
+      exchanges:
+        args.exchanges && args.exchanges !== 'true'
+          ? args.exchanges.split(',').map((s) => s.trim())
+          : undefined,
+      maxAgeHours,
+    });
+    await emit(radar, renderRadar(radar));
+    return radar.freshness.pass ? 0 : 1;
+  }
+
+  // ── 模式二：新闻摘要 ──────────────────────────────────
+  if (args.news) {
+    const digest = await fetchDigest(client, {
+      variant: args.variant && args.variant !== 'true' ? args.variant : 'finance',
+      lang: args.lang && args.lang !== 'true' ? args.lang : undefined,
+      categories:
+        args.categories && args.categories !== 'true'
+          ? args.categories.split(',').map((s) => s.trim())
+          : undefined,
+      limit: args.limit ? Number(args.limit) : undefined,
+      minImportance: args.minImportance ? Number(args.minImportance) : undefined,
+      alertsOnly: args.alertsOnly === 'true',
+      maxAgeHours,
+    });
+    await emit(digest, renderNews(digest));
+    return digest.ok && digest.freshness.pass ? 0 : 1;
+  }
+
+  // ── 模式三：逐源拉取 ──────────────────────────────────
+  const includePremium = args.premium !== 'false' && args.noPremium !== 'true';
+  const only = args.only ? args.only.split(',').map((s) => s.trim()) : undefined;
+  const group = args.group && args.group !== 'true' ? args.group : undefined;
+
+  const chosen = selectSources({ group, only, includePremium });
+  if (!chosen.length) {
+    console.error('没有匹配的数据源。用 --list 查看可用 id / 分组。');
+    return 2;
+  }
+
   const override = {};
   if (Object.keys(args.param).length) override.params = args.param;
   if (args.jmespath && args.jmespath !== 'true') override.jmespath = args.jmespath;
@@ -173,15 +379,13 @@ async function main() {
     ok: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
     results,
+    freshness: checkFreshness(
+      results.map((r) => ({ source: r.source, payload: r })),
+      maxAgeHours,
+    ),
   };
 
-  console.log(summarize(snapshot));
-  if (args.pretty) console.log(JSON.stringify(snapshot, null, 2));
-  if (args.out && args.out !== 'true') {
-    await writeFile(args.out, JSON.stringify(snapshot, null, 2));
-    console.log(`已写出 ${args.out}`);
-  }
-
+  await emit(snapshot, `${summarize(snapshot)}\n${renderFreshness(snapshot.freshness)}\n`);
   return snapshot.ok > 0 ? 0 : 1;
 }
 

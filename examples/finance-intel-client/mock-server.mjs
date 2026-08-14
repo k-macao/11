@@ -11,25 +11,120 @@
  *  - 未知路由返回 404
  */
 
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SOURCES } from './sources.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CATALOG = JSON.parse(readFileSync(resolve(HERE, 'catalog.generated.json'), 'utf8'));
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '127.0.0.1';
 let flakyHits = 0;
 
+/** 让某个源看起来过期，用于验证新鲜度门禁：STALE=crypto node mock-server.mjs */
+const STALE = new Set((process.env.STALE ?? '').split(',').filter(Boolean));
+
+const iso = (hoursAgo = 0) => new Date(Date.now() - hoursAgo * 3600_000).toISOString();
+
+function quoteList(symbols, staleKey) {
+  const age = STALE.has(staleKey) ? 48 : 0.2;
+  return symbols.map((s, i) => ({
+    symbol: s,
+    price: Number((50 + ((i * 137) % 900) + 0.5).toFixed(2)),
+    change_percent: Number(((((i * 37) % 60) - 30) / 10).toFixed(2)),
+    updated_at: iso(age),
+  }));
+}
+
+/** 7 信号的 mock，形状对齐 MacroSignalsPanel 的 signals 结构。 */
+function macroSignalsPayload() {
+  const age = STALE.has('macro') ? 48 : 0.5;
+  return {
+    verdict: 'CASH',
+    signals: {
+      liquidity: { status: 'BEARISH', value: -2.4, sparkline: [1, 2, 3] },
+      flowStructure: { status: 'NEUTRAL', btcReturn5: 1.2, qqqReturn5: 0.4 },
+      macroRegime: { status: 'BULLISH', qqqRoc20: 3.1, xlpRoc20: 0.6 },
+      technicalTrend: { status: 'BULLISH', btcPrice: 94210, sma50: 91000, mayerMultiple: 1.08 },
+      hashRate: { status: 'BULLISH', change30d: 4.7 },
+      priceMomentum: { status: 'NEUTRAL' },
+      fearGreed: { status: 'GREED', value: 68 },
+    },
+    meta: { qqqSparkline: [1, 2, 3] },
+    generatedAt: iso(age),
+  };
+}
+
+/** 新闻摘要 mock：按 variant 生成该变体真实的类别构成。 */
+function feedDigestPayload(url) {
+  const variant = url.searchParams.get('variant') ?? 'full';
+  const cats = CATALOG.newsCategories[variant] ?? CATALOG.newsCategories.full;
+  const age = STALE.has('news') ? 48 : 0.3;
+  const categories = {};
+  let n = 0;
+  for (const [key, feedCount] of Object.entries(cats)) {
+    const items = Array.from({ length: Math.min(6, feedCount) }, (_, i) => ({
+      title: `[${key}] mock 头条 ${i + 1}`,
+      source: `Mock Source ${((n + i) % 12) + 1}`,
+      link: `https://example.com/${key}/${i}`,
+      pubDate: iso(age + i * 0.1),
+      importanceScore: 90 - i * 7,
+      corroborationCount: 5 - (i % 5),
+      isAlert: i === 0 && key !== 'positive',
+    }));
+    n += items.length;
+    categories[key] = { items };
+  }
+  return {
+    categories,
+    // feedStatuses 只上报非 ok 状态
+    feedStatuses: { 'Mock Source 9': 'empty', 'Mock Source 4': 'partial-undated' },
+    generatedAt: iso(age),
+  };
+}
+
 function fakePayload(source, url) {
-  const now = new Date().toISOString();
+  const now = iso();
+
+  // 专门的路由优先于按 group 的通用回退
+  switch (url.pathname) {
+    case '/api/economic/v1/get-macro-signals':
+      return macroSignalsPayload();
+    case '/api/news/v1/list-feed-digest':
+      return feedDigestPayload(url);
+    case '/api/market/v1/get-fear-greed-index':
+      return {
+        value: 68,
+        classification: 'Greed',
+        history: [{ value: 61, date: iso(24) }],
+        generatedAt: iso(STALE.has('fear') ? 48 : 0.4),
+      };
+    case '/api/market/v1/list-commodity-quotes':
+      return {
+        quotes: quoteList(CATALOG.commoditySymbols, 'commodities'),
+        as_of: iso(STALE.has('commodities') ? 48 : 0.2),
+      };
+    case '/api/market/v1/list-crypto-quotes':
+      return {
+        quotes: quoteList(CATALOG.cryptoIds, 'crypto'),
+        as_of: iso(STALE.has('crypto') ? 48 : 0.2),
+      };
+    default:
+      break;
+  }
+
   switch (source.group) {
     case 'markets': {
       const symbols = url.searchParams.getAll('symbols');
-      const list = (symbols.length ? symbols : ['^GSPC', '^HSI']).map((s, i) => ({
-        symbol: s,
-        price: 100 + i * 37.5,
-        change_percent: (i % 2 ? -1 : 1) * (0.4 + i * 0.15),
-        updated_at: now,
-      }));
-      return { quotes: list, source: 'mock', cached: true, as_of: now };
+      return {
+        quotes: quoteList(symbols.length ? symbols : ['^GSPC', '^HSI'], 'markets'),
+        source: 'mock',
+        cached: true,
+        as_of: iso(STALE.has('markets') ? 48 : 0.2),
+      };
     }
     case 'macro':
       return {
@@ -57,6 +152,9 @@ function fakePayload(source, url) {
 }
 
 const byPath = new Map(SOURCES.map((s) => [s.path, s]));
+// 新闻类路由不在 SOURCES 里（它们是 --news 模式专用），单独注册
+byPath.set('/api/news/v1/list-feed-digest', { id: 'feed-digest', group: 'news', path: '/api/news/v1/list-feed-digest' });
+byPath.set('/api/news/v1/summarize-article-cache', { id: 'summary-cache', group: 'news', path: '/api/news/v1/summarize-article-cache' });
 
 const server = createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
