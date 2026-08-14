@@ -4365,6 +4365,9 @@
       "status": "terms-review",
       "references": [
         {
+          "path": "scripts/push-finance-brief.mjs"
+        },
+        {
           "path": "scripts/validate-rss-feeds.mjs"
         },
         {
@@ -5142,6 +5145,9 @@
         },
         {
           "path": "scripts/ais-relay.cjs"
+        },
+        {
+          "path": "scripts/push-finance-brief.mjs"
         },
         {
           "path": "scripts/seed-commodity-quotes.mjs"
@@ -9393,6 +9399,20 @@
         },
         {
           "path": "src/config/variants/tech.ts"
+        }
+      ]
+    },
+    {
+      "host": "www.pushplus.plus",
+      "provider": "www.pushplus.plus",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit www.pushplus.plus and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/push-finance-brief.mjs"
         }
       ]
     },
