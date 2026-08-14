@@ -428,6 +428,19 @@ describe('CI workflow coverage', () => {
     );
   });
 
+  it('preserves the requested variant when Playwright starts its Vite server', () => {
+    assert.match(
+      playwrightConfig,
+      /command:\s*['"]VITE_E2E=1 npm exec vite -- --host 127\.0\.0\.1 --port 4173['"]/,
+      'Playwright must start Vite directly so the outer test:e2e:* VITE_VARIANT reaches the app',
+    );
+    assert.doesNotMatch(
+      playwrightConfig,
+      /command:\s*['"][^'"]*npm run dev/,
+      'npm run dev forces VITE_FINANCE_ONLY=1 and makes every variant smoke exercise finance instead',
+    );
+  });
+
   it('keeps the main Test workflow jobs for defensibility smoke gates', () => {
     for (const job of REQUIRED_TEST_JOBS) {
       assert.match(testWorkflow, new RegExp(`\\n  ${escapeRegExp(job)}:\\n`), `test.yml must define ${job}`);

@@ -68,7 +68,10 @@ export default defineConfig({
   ],
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
   webServer: {
-    command: 'VITE_E2E=1 npm run dev -- --host 127.0.0.1 --port 4173',
+    // Invoke Vite directly so each `test:e2e:*` script's VITE_VARIANT survives.
+    // `npm run dev` intentionally forces the finance-only product and would
+    // silently run every full/tech/energy smoke against the wrong dashboard.
+    command: 'VITE_E2E=1 npm exec vite -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/tests/map-harness.html',
     reuseExistingServer: false,
     timeout: 120000,
