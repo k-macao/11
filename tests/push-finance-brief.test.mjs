@@ -41,7 +41,7 @@ describe('PushPlus finance brief', () => {
     assert.equal(quote.changePercent, 2);
   });
 
-  it('renders a portrait editorial issue instead of a markdown table', () => {
+  it('renders the 章鱼 AI vertical long-form issue instead of a markdown table', () => {
     const report = buildFinanceReport({
       generatedAt: new Date('2026-08-14T08:00:00Z'),
       quotes: [{ label: '黄金', price: 2500, changePercent: -0.5, currency: 'USD' }],
@@ -53,10 +53,16 @@ describe('PushPlus finance brief', () => {
       }],
     });
 
-    assert.match(report, /data-finance-template="editorial-portrait"/);
-    assert.match(report, /aspect-ratio:3\/4/);
-    assert.match(report, /WORLD MONITOR/);
-    assert.match(report, /金融市场<br>纵览/);
+    assert.match(report, /data-finance-template="octopus-panorama-longform"/);
+    assert.match(report, /章鱼 AI 全景分析/);
+    assert.match(report, /全网 AI 调研境内境外数据，由多个大模型混合部署/);
+    assert.match(report, /fm-hl">全景视野分析</);
+    assert.match(report, /fm-chip">Claude</);
+    assert.match(report, /fm-chip">Kimi</);
+    assert.match(report, /作者：章鱼 ai/);
+    assert.match(report, /仅供参考，分析研究/);
+    assert.match(report, /市场全景/);
+    assert.match(report, /全网要闻/);
     assert.match(report, /黄金/);
     assert.match(report, /2,500 USD/);
     assert.match(report, /▼ -0\.50%/);
@@ -65,6 +71,8 @@ describe('PushPlus finance brief', () => {
     assert.doesNotMatch(report, /\| 黄金 \|/);
     assert.doesNotMatch(report, /📈|🔺|🔻/);
     assert.doesNotMatch(report, /军事|气候|航空/);
+    assert.doesNotMatch(report, /aspect-ratio:3\/4/);
+    assert.doesNotMatch(report, /PushPlus|WORLD MONITOR|金融市场<br>纵览/);
   });
 
   it('keeps the maximum manual-run issue below the PushPlus 100,000-character member limit', () => {
@@ -113,6 +121,8 @@ describe('PushPlus finance brief', () => {
     const preview = buildPreviewDocument('<div>issue</div>');
     assert.match(preview, /^<!doctype html>/);
     assert.match(preview, /<meta name="viewport"/);
+    assert.match(preview, /<title>章鱼 AI 全景分析<\/title>/);
+    assert.doesNotMatch(preview, /PushPlus/);
     assert.match(preview, /<div>issue<\/div>/);
   });
 

@@ -5,7 +5,12 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /**
- * Build an editorial financial-market report and deliver it to PushPlus WeChat.
+ * Build the「章鱼 AI 全景分析」vertical long-form page and deliver it to PushPlus WeChat.
+ *
+ * The page adapts Guizang PPT Skill's Style A「电子杂志 × 电子墨水」to a
+ * portrait, scroll-friendly long read for WeChat: light-gray paper background,
+ * fluorescent-green display type, black body copy, fluorescent-green-on-black
+ * highlights, and small type throughout.
  *
  * Local preview (does not send):
  *   npm run finance:push -- --dry-run
@@ -24,19 +29,71 @@ const PREVIEW_FILE = 'finance-push-preview.html';
 
 const REPORT_STYLES = `
 .fm,.fm *{box-sizing:border-box}
-.fm{--paper:#f2f4f5;--paper2:#e5ebef;--ink:#0a1f3d;--muted:#5f6d78;--line:rgba(10,31,61,.20);--accent:#315d93;--down:#9a4a3a;width:100%;max-width:680px;margin:0 auto;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei UI',sans-serif}
-.fm-cover{position:relative;width:100%;aspect-ratio:3/4;min-height:560px;padding:28px 26px 24px;overflow:hidden;background-color:var(--paper);background-image:radial-gradient(circle at 88% 12%,rgba(49,93,147,.15),transparent 31%),radial-gradient(circle at 14% 82%,rgba(10,31,61,.07),transparent 34%);border:1px solid var(--line)}
-.fm-row{display:flex;align-items:flex-start;width:100%}.fm-between{justify-content:space-between}.fm-mastrow{align-items:flex-end;padding-bottom:10px;border-bottom:1px solid var(--ink)}
-.fm-mast{font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;letter-spacing:.06em}.fm-issue{text-align:right;font:9px/1.5 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.16em;color:var(--muted)}
-.fm-hero{margin-top:34px;padding-left:17px;border-left:3px solid var(--accent)}.fm-kicker{font:9px/1.5 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
-.fm-hero .fm-kicker{letter-spacing:.22em;color:var(--muted)}.fm-title{margin:16px 0 0;font-family:'Songti SC','Noto Serif SC',STSong,Georgia,serif;font-size:48px;font-weight:500;line-height:1.13;letter-spacing:.06em}.fm-deck{max-width:85%;margin:17px 0 0;font-family:'Songti SC','Noto Serif SC',STSong,Georgia,serif;font-size:15px;line-height:1.75;color:var(--muted)}
-.fm-lead{margin-top:42px;padding:20px 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.fm-label{font:9px/1.5 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}.fm-leadrow{align-items:baseline;margin-top:10px}.fm-leadname{font:20px/1.3 'Songti SC','Noto Serif SC',STSong,Georgia,serif}.fm-leadmove{margin-left:auto;font:italic 30px/1 Georgia,'Times New Roman',serif}
-.fm-stats{position:absolute;left:26px;right:26px;bottom:24px;border-top:1px solid var(--ink)}.fm-stat{flex:1;padding-top:12px}.fm-stat:nth-child(2){text-align:center}.fm-stat:last-child{text-align:right}.fm-statnum{font:25px/1 Georgia,'Times New Roman',serif}.fm-statlabel{margin-top:4px;font:8px/1.4 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.13em;color:var(--muted)}
-.fm-section{padding:35px 26px 12px}.fm-news{margin-top:24px;background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.fm-sectionhead{align-items:flex-end}.fm-section h2{margin:9px 0 0;font:500 30px/1.25 'Songti SC','Noto Serif SC',STSong,Georgia,serif;letter-spacing:.04em}.fm-time{margin-left:auto;text-align:right;font:9px/1.6 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.1em;color:var(--muted)}.fm-intro{margin:11px 0 22px;font:14px/1.7 'Songti SC','Noto Serif SC',STSong,Georgia,serif;color:var(--muted)}.fm-ledger{margin-top:20px}
-.fm-empty{padding:28px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:17px/1.7 'Songti SC','Noto Serif SC',STSong,Georgia,serif;color:var(--muted)}.fm-qrow{padding:17px 0 15px;border-top:1px solid var(--line)}.fm-qline{align-items:flex-start}.fm-no{width:44px;flex:0 0 44px;font:11px/1.4 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.12em;color:var(--muted)}.fm-qname{font-size:16px;font-weight:600}.fm-qvalue{width:40%;margin-left:auto;text-align:right;font:16px/1.3 ui-monospace,'SFMono-Regular',Consolas,monospace}.fm-change{margin-top:4px;font-size:13px;font-weight:600}.fm-bar{width:100%;height:2px;margin-top:11px;background:var(--paper2)}.fm-bar i{display:block;height:2px}
-.fm-story{padding:23px 0 21px;border-top:1px solid var(--line)}.fm-storyno{width:48px;flex:0 0 48px;font:italic 29px/1 'Songti SC','Noto Serif SC',STSong,Georgia,serif;color:var(--accent)}.fm-storybody{flex:1}.fm-storytitle{font:18px/1.58 'Songti SC','Noto Serif SC',STSong,Georgia,serif;letter-spacing:.01em}.fm-storytitle a{color:var(--ink);text-decoration:none}.fm-meta{margin-top:9px;font:10px/1.5 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.fm-footer{padding:34px 26px 38px;background:var(--ink);color:var(--paper)}.fm-signoff{font:italic 22px/1.35 Georgia,'Times New Roman',serif;letter-spacing:.04em}.fm-accentline{width:42px;height:2px;margin:22px 0;background:var(--accent)}.fm-colophon{font:8px/1.7 ui-monospace,'SFMono-Regular',Consolas,monospace;letter-spacing:.12em;color:#b5c0ca}.fm-disclaimer{margin-left:auto;text-align:right;font:11px/1.7 'Songti SC','Noto Serif SC',STSong,Georgia,serif;color:#c5ced5}
-@media(max-width:480px){.fm-title{font-size:44px}.fm-cover{padding-left:22px;padding-right:22px}.fm-stats{left:22px;right:22px}.fm-section,.fm-footer{padding-left:22px;padding-right:22px}}
+.fm{
+  --bg:#e9e9e7;
+  --paper:#f4f4f1;
+  --ink:#0b0b0b;
+  --ink-soft:#3f3f3d;
+  --muted:#8b8b87;
+  --line:rgba(11,11,11,.20);
+  --neon:#39ff14;
+  --neon-deep:#16c50b;
+  width:100%;max-width:640px;margin:0 auto;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei UI',sans-serif;
+  font-size:14px;line-height:1.85;-webkit-font-smoothing:antialiased;
+}
+.fm-page{padding:28px 22px 0}
+.fm-mastrow{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:10px;border-bottom:1px solid var(--ink)}
+.fm-mast{font:600 11px/1.5 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.2em}
+.fm-mastsq{display:inline-block;width:7px;height:7px;background:var(--neon);margin-right:8px}
+.fm-mastsub{text-align:right;font:9px/1.7 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.16em;color:var(--muted)}
+.fm-hero{margin-top:26px}
+.fm-kicker{font:600 9.5px/1.5 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.24em;text-transform:uppercase;color:var(--neon-deep)}
+.fm-title{margin:10px 0 0;font:600 26px/1.4 'Songti SC','Noto Serif SC',STSong,Georgia,serif;letter-spacing:.05em;color:var(--neon)}
+.fm-deck{margin:12px 0 0;padding-left:12px;border-left:3px solid var(--ink);font-size:13px;line-height:1.8;color:var(--ink)}
+.fm-duorule{display:flex;gap:6px;margin-top:22px}
+.fm-duorule i{height:3px}
+.fm-duorule i:first-child{flex:2.2;background:var(--ink)}
+.fm-duorule i:last-child{flex:1;background:var(--neon)}
+.fm-lead{margin-top:20px}
+.fm-lead p{margin:0 0 14px;font-size:14px;line-height:1.95;color:var(--ink)}
+.fm-hl{background:var(--ink);color:var(--neon);padding:0 5px;font-weight:600}
+.fm-chip{display:inline-block;margin:0 4px 3px 0;padding:0 6px;background:var(--ink);color:var(--neon);font:500 11px/1.9 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.03em}
+.fm-jiayou{color:var(--neon-deep);font-weight:600}
+.fm-section{margin-top:30px;border-top:2px solid var(--ink);padding-top:14px}
+.fm-sechead{display:flex;align-items:baseline;gap:10px}
+.fm-secno{font:600 9.5px/1.5 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.18em;color:var(--neon-deep)}
+.fm-h2{margin:0;font:600 18px/1.5 'Songti SC','Noto Serif SC',STSong,Georgia,serif;letter-spacing:.06em;color:var(--neon)}
+.fm-stamp{margin-left:auto;text-align:right;font:9px/1.6 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.08em;color:var(--muted)}
+.fm-stats{margin-top:9px;font:500 10px/1.7 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.06em;color:var(--ink-soft)}
+.fm-stats b{color:var(--neon-deep);font-weight:600}
+.fm-qrow{display:grid;grid-template-columns:36px 1fr auto;grid-template-rows:auto auto auto;column-gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.fm-no{grid-column:1;grid-row:1/3;font:500 10px/1.6 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.08em;color:var(--muted)}
+.fm-qname{grid-column:2;grid-row:1;font-size:13px;font-weight:600;color:var(--ink)}
+.fm-qvalue{grid-column:3;grid-row:1;text-align:right;font:500 13px/1.4 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;color:var(--ink)}
+.fm-change{grid-column:2/4;grid-row:2;text-align:right;font:500 11px/1.4 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;color:var(--ink-soft)}
+.fm-bar{grid-column:1/4;grid-row:3;height:2px;margin-top:9px;background:rgba(11,11,11,.08)}
+.fm-bar i{display:block;height:2px}
+.fm-news{margin-top:30px;background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 16px 10px}
+.fm-empty{padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px;line-height:1.8;color:var(--ink-soft)}
+.fm-story{padding:13px 0;border-top:1px solid var(--line)}
+.fm-storyrow{display:flex;gap:12px;align-items:flex-start}
+.fm-storyno{flex:0 0 28px;font:italic 600 15px/1.7 'Songti SC','Noto Serif SC',STSong,Georgia,serif;color:var(--neon-deep)}
+.fm-storybody{flex:1;min-width:0}
+.fm-storytitle{font-size:13.5px;line-height:1.75;color:var(--ink)}
+.fm-storytitle a{color:var(--ink);text-decoration:none}
+.fm-meta{display:block;margin-top:5px;font:9px/1.6 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fm-footer{margin:34px -22px 0;background:var(--ink);color:var(--neon);padding:24px 22px 26px}
+.fm-signoff{font-size:13px;font-weight:600;letter-spacing:.02em}
+.fm-accentline{width:44px;height:2px;margin:14px 0;background:var(--neon)}
+.fm-disc{font-size:12px;color:rgba(57,255,20,.82)}
+.fm-colophon{margin-top:16px;font:8.5px/1.8 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:.14em;color:rgba(57,255,20,.5)}
+@media(max-width:420px){
+  .fm-title{font-size:24px}
+  .fm-page{padding-left:18px;padding-right:18px}
+  .fm-footer{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+  .fm-news{padding-left:13px;padding-right:13px}
+}
 `.replace(/\s+/g, ' ').replace(/\s*([{}:;,])\s*/g, '$1').trim();
 
 export const FINANCE_SYMBOLS = [
@@ -227,11 +284,12 @@ function quoteLedger(quotes) {
   return quotes.map((quote, index) => {
     const change = changeParts(quote.changePercent);
     const currency = quote.currency ? ` ${escapeHtml(quote.currency)}` : '';
-    const tone = quote.changePercent < 0 ? 'var(--down)' : 'var(--accent)';
+    // 涨用荧光绿、跌用黑，其余一律黑字 —— 只允许荧光绿与黑两种搭配。
+    const barTone = change.width > 0 && quote.changePercent > 0 ? 'var(--neon)' : 'var(--ink)';
     const bar = change.width > 0
-      ? `<i style="width:${change.width.toFixed(1)}%;background:${tone}"></i>`
+      ? `<i style="width:${change.width.toFixed(1)}%;background:${barTone}"></i>`
       : '';
-    return `<div class="fm-qrow"><div class="fm-row fm-qline"><span class="fm-no">${String(index + 1).padStart(2, '0')}</span><span class="fm-qname">${escapeHtml(quote.label)}</span><span class="fm-qvalue">${escapeHtml(formatPrice(quote.price))}${currency}<span class="fm-change" style="display:block;color:${tone}">${change.arrow} ${change.label}</span></span></div><div class="fm-bar">${bar}</div></div>`;
+    return `<div class="fm-qrow"><span class="fm-no">${String(index + 1).padStart(2, '0')}</span><span class="fm-qname">${escapeHtml(quote.label)}</span><span class="fm-qvalue">${escapeHtml(formatPrice(quote.price))}${currency}</span><span class="fm-change">${change.arrow} ${change.label}</span><div class="fm-bar">${bar}</div></div>`;
   }).join('');
 }
 
@@ -248,31 +306,23 @@ function headlineLedger(headlines) {
       : title;
     const published = formatPublishedAt(item.publishedAt);
     const meta = [item.source, published].filter(Boolean).map(escapeHtml).join(' · ');
-    return `<div class="fm-story"><div class="fm-row"><span class="fm-storyno">${String(index + 1).padStart(2, '0')}</span><span class="fm-storybody"><span class="fm-storytitle">${linkedTitle}</span>${meta ? `<span class="fm-meta" style="display:block">${meta}</span>` : ''}</span></div></div>`;
+    return `<div class="fm-story"><div class="fm-storyrow"><span class="fm-storyno">${String(index + 1).padStart(2, '0')}</span><span class="fm-storybody"><span class="fm-storytitle">${linkedTitle}</span>${meta ? `<span class="fm-meta">${meta}</span>` : ''}</span></div></div>`;
   }).join('');
 }
 
 /**
- * Render a portrait, single-column HTML issue for the PushPlus HTML template.
- * The design adapts Guizang's Editorial Magazine × E-ink system to a compact
- * financial ledger: serif display, mono metadata, paper/ink palette, hairline
- * rules, one restrained accent, and intentional 3:4 cover composition.
+ * Render the「章鱼 AI 全景分析」vertical long-form page for the PushPlus HTML template.
+ * Style A「电子杂志 × 电子墨水」adapted to WeChat reading: light-gray paper, small
+ * fluorescent-green display type, black body copy, neon-on-black highlights, and a
+ * black sign-off block — no emoji, no big radii, no card stacks.
  */
 function renderFinanceReport({ quotes, headlines, generatedAt }) {
   const date = shanghaiParts(generatedAt);
   const finiteMoves = quotes.filter((quote) => Number.isFinite(quote.changePercent));
-  const leadQuote = finiteMoves.reduce((strongest, quote) => (
-    !strongest || Math.abs(quote.changePercent) > Math.abs(strongest.changePercent) ? quote : strongest
-  ), null);
   const advancing = finiteMoves.filter((quote) => quote.changePercent > 0).length;
   const declining = finiteMoves.filter((quote) => quote.changePercent < 0).length;
-  const leadChange = leadQuote ? changeParts(leadQuote.changePercent) : null;
-  const issueCode = `WM-${date.year}${date.month}${date.day}`;
-  const leadName = leadQuote ? escapeHtml(leadQuote.label) : '市场待更新';
-  const leadMove = leadChange ? `${leadChange.arrow} ${leadChange.label}` : '— 暂无';
-  const leadTone = leadQuote?.changePercent < 0 ? 'var(--down)' : 'var(--accent)';
 
-  return `<style>${REPORT_STYLES}</style><div class="fm" data-finance-template="editorial-portrait"><div class="fm-cover"><div class="fm-row fm-between fm-mastrow"><span class="fm-mast">WORLD MONITOR</span><span class="fm-issue">MARKET REVIEW<br>${escapeHtml(issueCode)}</span></div><div class="fm-hero"><div class="fm-kicker">Global Finance · Daily Edition</div><h1 class="fm-title">金融市场<br>纵览</h1><p class="fm-deck">从全球指数、外汇与大宗商品，到今日值得关注的金融叙事。</p></div><div class="fm-lead"><div class="fm-label">Lead movement</div><div class="fm-row fm-leadrow"><span class="fm-leadname">${leadName}</span><span class="fm-leadmove" style="color:${leadTone}">${leadMove}</span></div></div><div class="fm-row fm-stats"><span class="fm-stat"><span class="fm-statnum">${quotes.length}</span><span class="fm-statlabel" style="display:block">ASSETS</span></span><span class="fm-stat"><span class="fm-statnum">${advancing}/${declining}</span><span class="fm-statlabel" style="display:block">UP / DOWN</span></span><span class="fm-stat"><span class="fm-statnum">${headlines.length}</span><span class="fm-statlabel" style="display:block">STORIES</span></span></div></div><div class="fm-section"><div class="fm-row fm-sectionhead"><span><span class="fm-kicker">01 · Market Ledger</span><h2>市场行情</h2></span><span class="fm-time">${date.year}.${date.month}.${date.day}<br>${date.hour}:${date.minute} CST</span></div><div class="fm-ledger">${quoteLedger(quotes)}</div></div><div class="fm-section fm-news"><div class="fm-kicker">02 · News Desk</div><h2>金融要闻</h2><p class="fm-intro">编辑台精选 · 点击标题阅读全文</p>${headlineLedger(headlines)}</div><div class="fm-footer"><div class="fm-signoff">Read the signal,<br>not the noise.</div><div class="fm-accentline"></div><div class="fm-row"><span class="fm-colophon">WORLD MONITOR<br>GLOBAL FINANCE DESK</span><span class="fm-disclaimer">数据仅供参考<br>不构成投资建议</span></div></div></div>`;
+  return `<style>${REPORT_STYLES}</style><div class="fm" data-finance-template="octopus-panorama-longform"><div class="fm-page"><div class="fm-mastrow"><span class="fm-mast"><span class="fm-mastsq"></span>章鱼 AI</span><span class="fm-mastsub">OCTOPUS AI<br>AI PANORAMA</span></div><header class="fm-hero"><div class="fm-kicker">Multi-Model AI · Panorama Research</div><h1 class="fm-title">章鱼 AI 全景分析</h1><p class="fm-deck">全网 AI 调研境内境外数据，由多个大模型混合部署</p></header><div class="fm-duorule"><i></i><i></i></div><section class="fm-lead"><p>全网境内外为你寻找蛛丝马迹 —— 提供<span class="fm-hl">全景视野分析</span>，由<span class="fm-hl">多模型协同推理决策</span>。底层所使用的大语言模型（LLM）多模式背后结合使用了多种不同的先进模型，包括但不限于 <span class="fm-chip">Claude</span>、<span class="fm-chip">ChatGPT</span>、<span class="fm-chip">Gemini</span>、<span class="fm-chip">Grok</span>、<span class="fm-chip">Qwen</span> 以及 <span class="fm-chip">Kimi</span>。</p><p>根据不同的资产管理任务需求，更好地发挥各个模型的优势来提供数据支持！<span class="fm-jiayou">[加油]</span></p></section><section class="fm-section"><div class="fm-sechead"><span class="fm-secno">01</span><h2 class="fm-h2">市场全景</h2><span class="fm-stamp">数据 · ${date.month}.${date.day} ${date.hour}:${date.minute}</span></div><div class="fm-stats">共 <b>${quotes.length}</b> 项行情 · <b>${advancing}</b> 涨 <b>${declining}</b> 跌 · <b>${headlines.length}</b> 条要闻</div>${quoteLedger(quotes)}</section><section class="fm-news"><div class="fm-sechead"><span class="fm-secno">02</span><h2 class="fm-h2">全网要闻</h2></div>${headlineLedger(headlines)}</section><footer class="fm-footer"><div class="fm-signoff">作者：章鱼 ai</div><div class="fm-accentline"></div><div class="fm-disc">仅供参考，分析研究</div><div class="fm-colophon">OCTOPUS AI · MULTI-MODEL ENSEMBLE<br>CLAUDE · CHATGPT · GEMINI · GROK · QWEN · KIMI</div></footer></div></div>`;
 }
 
 export function buildFinanceReport({ quotes, headlines, generatedAt = new Date() }) {
@@ -303,7 +353,7 @@ export function buildFinanceReport({ quotes, headlines, generatedAt = new Date()
 export function buildFinanceSummary({ quotes, headlines, generatedAt = new Date() }) {
   const date = shanghaiParts(generatedAt);
   const lines = [
-    '# 金融市场速报',
+    '# 章鱼 AI 全景分析',
     '',
     `> 更新时间：${date.year}-${date.month}-${date.day} ${date.hour}:${date.minute}（北京时间）`,
     '',
@@ -329,7 +379,7 @@ export function buildFinanceSummary({ quotes, headlines, generatedAt = new Date(
       lines.push(`${index + 1}. [${item.title}](${item.link})${source}`);
     });
   }
-  lines.push('', '---', '数据仅供参考，不构成投资建议。');
+  lines.push('', '---', '作者：章鱼 ai · 仅供参考，分析研究。');
   return lines.join('\n');
 }
 
@@ -339,9 +389,9 @@ export function buildPreviewDocument(content) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>金融市场纵览 · PushPlus 预览</title>
+  <title>章鱼 AI 全景分析</title>
 </head>
-<body style="margin:0;padding:24px 12px;background:#d9dde0;">
+<body style="margin:0;padding:24px 0;background:#e9e9e7;">
 ${content}
 </body>
 </html>`;
@@ -399,15 +449,10 @@ async function main() {
   await sendToPushPlus({
     token: process.env.PUSHPLUS_TOKEN,
     topic: process.env.PUSHPLUS_TOPIC,
-    title: `金融市场纵览 ${dateTitle(generatedAt)}`,
+    title: '章鱼 AI 全景分析',
     content: report,
   });
   console.log('\n[finance] PushPlus 微信推送成功。');
-}
-
-function dateTitle(value) {
-  const date = shanghaiParts(value);
-  return `${date.year}/${date.month}/${date.day}`;
 }
 
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
