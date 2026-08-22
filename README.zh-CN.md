@@ -90,14 +90,14 @@ npm run dev
 
 特定功能的数据源可能需要凭据。完整列表请参阅 `.env.example`。
 
-### 手动推送金融速报到 PushPlus 微信
+### 手动推送「章鱼 AI 全景分析」到 PushPlus 微信
 
 1. 将仓库根目录的 `manual-finance-pushplus.yml.example` 复制为 `.github/workflows/manual-finance-pushplus.yml`。
 2. 在仓库 **Settings → Secrets and variables → Actions** 中添加 `PUSHPLUS_TOKEN`（从 PushPlus 获取）；群组推送可再添加可选的 `PUSHPLUS_TOPIC`。
 3. 打开 **Actions → 手动推送金融速报到微信 → Run workflow**。
-4. 工作流会获取全球主要指数、汇率、黄金、原油、加密货币和中文金融要闻：Actions 运行摘要保留紧凑的 Markdown 数据表，微信端则使用 **HTML 竖版国际杂志风**推送。该工作流只有手动触发入口，不会定时运行。
+4. 工作流会获取全球主要指数、汇率、黄金、原油、加密货币和中文金融要闻：Actions 运行摘要保留紧凑的 Markdown 数据表，微信端则推送标题为「章鱼 AI 全景分析」的 **HTML 竖版长页面**。该工作流只有手动触发入口，不会定时运行。
 
-推送视觉参考 [Guizang Social Card Skill](https://github.com/op7418/guizang-social-card-skill) 的 Editorial Magazine × E-ink 体系，采用 3:4 竖版封面、衬线大标题、等宽元数据、纸张/墨色底、细分隔线、市场 ledger 与单一靛蓝强调色；去掉 emoji、大圆角、阴影和通用卡片堆叠。
+推送视觉参考 [Guizang PPT Skill](https://github.com/op7418/guizang-ppt-skill) 的 Style A「电子杂志 × 电子墨水」体系，改造为适合微信阅读的竖版长页面：整体浅灰纸底、荧光绿标题、黑色正文，重点文字为荧光绿字配黑色底色高亮，其余搭配只在荧光绿与黑之间选择，全部字号偏小；去掉 emoji、大圆角、阴影和通用卡片堆叠。
 
 本地只预览、不推送（会在仓库根目录生成已忽略的 `finance-push-preview.html`）：
 
